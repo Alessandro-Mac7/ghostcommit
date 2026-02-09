@@ -1,22 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  isConventionalCommit,
   parseCommit,
   parseCommits,
-  isConventionalCommit,
 } from "../../src/changelog/parser.js";
-import type { CommitInfo } from "../../src/git.js";
-
-function makeCommit(
-  message: string,
-  hash: string = "abc1234",
-): CommitInfo {
-  return {
-    hash,
-    message,
-    author: "Test Author",
-    date: "2026-02-08T10:00:00Z",
-  };
-}
+import { makeCommit } from "../helpers.js";
 
 describe("parseCommit", () => {
   describe("conventional commits", () => {
@@ -94,9 +82,7 @@ describe("parseCommit", () => {
     });
 
     it("should extract PR number from freeform commit", () => {
-      const result = parseCommit(
-        makeCommit("Update dependencies (#123)"),
-      );
+      const result = parseCommit(makeCommit("Update dependencies (#123)"));
       expect(result.prNumber).toBe(123);
       expect(result.description).toBe("Update dependencies (#123)");
     });
@@ -131,9 +117,9 @@ describe("parseCommit", () => {
 describe("parseCommits", () => {
   it("should parse multiple commits", () => {
     const commits = [
-      makeCommit("feat: add feature", "aaa"),
-      makeCommit("fix: resolve bug", "bbb"),
-      makeCommit("Updated README", "ccc"),
+      makeCommit("feat: add feature", { hash: "aaa" }),
+      makeCommit("fix: resolve bug", { hash: "bbb" }),
+      makeCommit("Updated README", { hash: "ccc" }),
     ];
 
     const results = parseCommits(commits);

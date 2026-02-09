@@ -1,6 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // We test the git module by mocking child_process.execFile
 vi.mock("node:child_process", () => ({
@@ -24,9 +22,8 @@ vi.mock("../src/utils.js", async () => {
     truncateLines: (text: string, maxLines: number) => {
       const lines = text.split("\n");
       if (lines.length <= maxLines) return text;
-      return lines.slice(0, maxLines).join("\n") + "\n... (truncated)";
+      return `${lines.slice(0, maxLines).join("\n")}\n... (truncated)`;
     },
-    isColorSupported: () => false,
     extractTicketFromBranch: (branch: string, pattern?: string) => {
       const regex = new RegExp(pattern || "[A-Z]+-\\d+");
       const match = branch.match(regex);
@@ -111,11 +108,11 @@ describe("git module", () => {
   });
 
   describe("getRecentCommits", () => {
-    it("should parse commit log", async () => {
+    it("should parse commit log with body", async () => {
       mockExec.mockResolvedValue({
         stdout:
-          "abc123\x00feat: add login\x00John Doe\x002025-01-15T10:00:00Z\n" +
-          "def456\x00fix: resolve bug\x00Jane Doe\x002025-01-14T09:00:00Z\n",
+          "abc123\x00feat: add login\x00John Doe\x002025-01-15T10:00:00Z\x00Added login page with OAuth support\n\x1e" +
+          "def456\x00fix: resolve bug\x00Jane Doe\x002025-01-14T09:00:00Z\x00\x1e",
         stderr: "",
       });
       const { getRecentCommits } = await import("../src/git.js");
@@ -125,6 +122,8 @@ describe("git module", () => {
       expect(commits[0].hash).toBe("abc123");
       expect(commits[0].message).toBe("feat: add login");
       expect(commits[0].author).toBe("John Doe");
+      expect(commits[0].body).toBe("Added login page with OAuth support");
+      expect(commits[1].body).toBeUndefined();
     });
 
     it("should return empty array for new repo", async () => {
@@ -137,7 +136,10 @@ describe("git module", () => {
 
   describe("getBranchName", () => {
     it("should return current branch name", async () => {
-      mockExec.mockResolvedValue({ stdout: "feature/PROJ-123-login\n", stderr: "" });
+      mockExec.mockResolvedValue({
+        stdout: "feature/PROJ-123-login\n",
+        stderr: "",
+      });
       const { getBranchName } = await import("../src/git.js");
       const branch = await getBranchName();
       expect(branch).toBe("feature/PROJ-123-login");

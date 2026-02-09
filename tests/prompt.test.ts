@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildSystemPrompt, buildUserPrompt } from "../src/prompt.js";
 
 describe("buildSystemPrompt", () => {
@@ -23,6 +23,27 @@ describe("buildSystemPrompt", () => {
     const prompt = buildSystemPrompt({ styleContext: "" });
     expect(prompt).toContain("ghostcommit");
     expect(prompt).not.toContain("STYLE GUIDE");
+  });
+
+  it("should include language instruction for non-English", () => {
+    const prompt = buildSystemPrompt({ language: "it" });
+    expect(prompt).toContain("LANGUAGE:");
+    expect(prompt).toContain("Italian");
+  });
+
+  it("should not include language instruction for English (default)", () => {
+    const prompt = buildSystemPrompt({ language: "en" });
+    expect(prompt).not.toContain("LANGUAGE:");
+  });
+
+  it("should not include language instruction when not set", () => {
+    const prompt = buildSystemPrompt({});
+    expect(prompt).not.toContain("LANGUAGE:");
+  });
+
+  it("should use raw code when language name is unknown", () => {
+    const prompt = buildSystemPrompt({ language: "nl" });
+    expect(prompt).toContain("Write the commit message in nl");
   });
 });
 

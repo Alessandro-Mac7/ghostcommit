@@ -1,15 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { analyzeCommits, buildStyleContext } from "../src/style-learner.js";
-import type { CommitInfo } from "../src/git.js";
-
-function makeCommit(message: string, hash?: string): CommitInfo {
-  return {
-    hash: hash || Math.random().toString(36).slice(2, 10),
-    message,
-    author: "Test Author",
-    date: "2025-01-01T00:00:00Z",
-  };
-}
+import { makeCommit } from "./helpers.js";
 
 describe("analyzeCommits", () => {
   it("should detect conventional commits", () => {
@@ -145,6 +136,34 @@ describe("analyzeCommits", () => {
     // Not majority → usesConventionalCommits should be false
     expect(analysis.usesConventionalCommits).toBe(false);
   });
+
+  it("should detect body usage", () => {
+    const commits = [
+      makeCommit("feat: add login", {
+        body: "Implemented OAuth2 login flow with refresh tokens.",
+      }),
+      makeCommit("fix: resolve crash", {
+        body: "Root cause was a null pointer in the auth middleware.",
+      }),
+      makeCommit("chore: bump deps"),
+    ];
+
+    const analysis = analyzeCommits(commits);
+    expect(analysis.bodyRatio).toBeCloseTo(2 / 3);
+    expect(analysis.usesBody).toBe(true);
+  });
+
+  it("should report no body usage when bodies are absent", () => {
+    const commits = [
+      makeCommit("feat: add feature"),
+      makeCommit("fix: resolve bug"),
+      makeCommit("chore: cleanup"),
+    ];
+
+    const analysis = analyzeCommits(commits);
+    expect(analysis.bodyRatio).toBe(0);
+    expect(analysis.usesBody).toBe(false);
+  });
 });
 
 describe("buildStyleContext", () => {
@@ -211,5 +230,17 @@ describe("buildStyleContext", () => {
 
     const context = buildStyleContext(analysis);
     expect(context).toContain("emoji");
+  });
+
+  it("should include body usage info", () => {
+    const analysis = analyzeCommits([
+      makeCommit("feat: add feature", { body: "Detailed description" }),
+      makeCommit("fix: bug", { body: "Root cause analysis" }),
+      makeCommit("chore: deps"),
+    ]);
+
+    const context = buildStyleContext(analysis);
+    expect(context).toContain("Body:");
+    expect(context).toContain("67%");
   });
 });

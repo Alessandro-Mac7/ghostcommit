@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OllamaProvider } from "../../src/providers/ollama.js";
 
 /** Create a mock fetch that routes by URL pattern. */
@@ -16,10 +16,9 @@ function mockFetchRoutes(
 
 /** Response for /api/tags that includes the requested model. */
 function tagsResponseWith(model: string): Response {
-  return new Response(
-    JSON.stringify({ models: [{ name: model }] }),
-    { status: 200 },
-  );
+  return new Response(JSON.stringify({ models: [{ name: model }] }), {
+    status: 200,
+  });
 }
 
 describe("OllamaProvider", () => {
@@ -44,9 +43,7 @@ describe("OllamaProvider", () => {
     });
 
     it("should return false when Ollama is not running", async () => {
-      vi.spyOn(global, "fetch").mockRejectedValue(
-        new Error("ECONNREFUSED"),
-      );
+      vi.spyOn(global, "fetch").mockRejectedValue(new Error("ECONNREFUSED"));
 
       const result = await provider.isAvailable();
       expect(result).toBe(false);
@@ -64,9 +61,7 @@ describe("OllamaProvider", () => {
 
   describe("hasModel", () => {
     it("should return true when model is present", async () => {
-      vi.spyOn(global, "fetch").mockResolvedValue(
-        tagsResponseWith("llama3.1"),
-      );
+      vi.spyOn(global, "fetch").mockResolvedValue(tagsResponseWith("llama3.1"));
 
       const result = await provider.hasModel();
       expect(result).toBe(true);
@@ -113,11 +108,11 @@ describe("OllamaProvider", () => {
       expect(result).toBe("feat: add new feature");
 
       // Verify the chat request was made
-      const chatCall = vi.mocked(fetch).mock.calls.find(
-        (c) => String(c[0]).includes("/api/chat"),
-      );
+      const chatCall = vi
+        .mocked(fetch)
+        .mock.calls.find((c) => String(c[0]).includes("/api/chat"));
       expect(chatCall).toBeDefined();
-      expect(chatCall![1]).toEqual(
+      expect(chatCall?.[1]).toEqual(
         expect.objectContaining({
           method: "POST",
           body: expect.stringContaining('"stream":false'),
@@ -131,9 +126,9 @@ describe("OllamaProvider", () => {
         "/api/chat": () => new Response("model not found", { status: 404 }),
       });
 
-      await expect(
-        provider.generate("diff", "system"),
-      ).rejects.toThrow("Ollama error (404)");
+      await expect(provider.generate("diff", "system")).rejects.toThrow(
+        "Ollama error (404)",
+      );
     });
 
     it("should include system and user messages", async () => {
@@ -150,10 +145,10 @@ describe("OllamaProvider", () => {
 
       await provider.generate("my diff", "be helpful");
 
-      const chatCall = vi.mocked(fetch).mock.calls.find(
-        (c) => String(c[0]).includes("/api/chat"),
-      );
-      const body = JSON.parse(chatCall![1]?.body as string);
+      const chatCall = vi
+        .mocked(fetch)
+        .mock.calls.find((c) => String(c[0]).includes("/api/chat"));
+      const body = JSON.parse(chatCall?.[1]?.body as string);
       expect(body.messages).toEqual([
         { role: "system", content: "be helpful" },
         { role: "user", content: "my diff" },
@@ -176,7 +171,7 @@ describe("OllamaProvider", () => {
           const stream = new ReadableStream({
             start(controller) {
               for (const chunk of chunks) {
-                controller.enqueue(new TextEncoder().encode(chunk + "\n"));
+                controller.enqueue(new TextEncoder().encode(`${chunk}\n`));
               }
               controller.close();
             },
@@ -229,10 +224,10 @@ describe("OllamaProvider", () => {
         // consume
       }
 
-      const chatCall = vi.mocked(fetch).mock.calls.find(
-        (c) => String(c[0]).includes("/api/chat"),
-      );
-      const body = JSON.parse(chatCall![1]?.body as string);
+      const chatCall = vi
+        .mocked(fetch)
+        .mock.calls.find((c) => String(c[0]).includes("/api/chat"));
+      const body = JSON.parse(chatCall?.[1]?.body as string);
       expect(body.stream).toBe(true);
     });
   });
@@ -243,7 +238,7 @@ describe("OllamaProvider", () => {
         start(controller) {
           controller.enqueue(
             new TextEncoder().encode(
-              JSON.stringify({ status: "success" }) + "\n",
+              `${JSON.stringify({ status: "success" })}\n`,
             ),
           );
           controller.close();
@@ -289,8 +284,8 @@ describe("OllamaProvider", () => {
       await provider.generate("diff", "system");
 
       // Should NOT have called /api/pull
-      const pullCalls = fetchSpy.mock.calls.filter(
-        (c) => String(c[0]).includes("/api/pull"),
+      const pullCalls = fetchSpy.mock.calls.filter((c) =>
+        String(c[0]).includes("/api/pull"),
       );
       expect(pullCalls).toHaveLength(0);
     });

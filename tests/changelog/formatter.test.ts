@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import {
-  formatMarkdown,
-  formatJSON,
-  formatPlain,
-  formatChangelog,
-} from "../../src/changelog/formatter.js";
+import { describe, expect, it } from "vitest";
 import type { CategorizedCommit } from "../../src/changelog/categorizer.js";
+import {
+  formatChangelog,
+  formatJSON,
+  formatMarkdown,
+  formatPlain,
+} from "../../src/changelog/formatter.js";
 import type { ParsedCommit } from "../../src/changelog/parser.js";
 
 function makeCategorized(
@@ -160,7 +160,9 @@ describe("formatJSON", () => {
   });
 
   it("should include breaking flag", () => {
-    const items = [makeCategorized("Breaking Changes", "remove API", undefined, true)];
+    const items = [
+      makeCategorized("Breaking Changes", "remove API", undefined, true),
+    ];
     const output = formatJSON(items, {
       format: "json",
       version: "2.0.0",

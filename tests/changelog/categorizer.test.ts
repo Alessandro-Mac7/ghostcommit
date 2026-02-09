@@ -1,15 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { CategorizedCommit } from "../../src/changelog/categorizer.js";
 import {
   categorizeCommits,
   groupByCategory,
 } from "../../src/changelog/categorizer.js";
-import type { CategorizedCommit } from "../../src/changelog/categorizer.js";
 import type { ParsedCommit } from "../../src/changelog/parser.js";
 import type { AIProvider } from "../../src/providers/base.js";
 
-function makeParsed(
-  overrides: Partial<ParsedCommit> = {},
-): ParsedCommit {
+function makeParsed(overrides: Partial<ParsedCommit> = {}): ParsedCommit {
   return {
     hash: "abc1234",
     date: "2026-02-08T10:00:00Z",
@@ -114,8 +112,16 @@ describe("categorizeCommits", () => {
 
     it("should categorize ci and build as CI/CD", async () => {
       const commits = [
-        makeParsed({ type: "ci", description: "update pipeline", message: "ci: update pipeline" }),
-        makeParsed({ type: "build", description: "update deps", message: "build: update deps" }),
+        makeParsed({
+          type: "ci",
+          description: "update pipeline",
+          message: "ci: update pipeline",
+        }),
+        makeParsed({
+          type: "build",
+          description: "update deps",
+          message: "build: update deps",
+        }),
       ];
 
       const results = await categorizeCommits(commits);

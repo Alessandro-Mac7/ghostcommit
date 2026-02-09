@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  shouldIgnoreFile,
+  formatDiffForPrompt,
   parseDiffIntoChunks,
   processDiff,
-  formatDiffForPrompt,
+  shouldIgnoreFile,
 } from "../src/diff-processor.js";
 import type { StagedFile } from "../src/git.js";
 
@@ -45,7 +45,9 @@ describe("shouldIgnoreFile", () => {
   });
 
   it("should respect extra ignore patterns with glob", () => {
-    expect(shouldIgnoreFile("types.generated.ts", ["*.generated.ts"])).toBe(true);
+    expect(shouldIgnoreFile("types.generated.ts", ["*.generated.ts"])).toBe(
+      true,
+    );
   });
 
   it("should ignore nested lock files", () => {
@@ -168,7 +170,9 @@ diff --git a/package-lock.json b/package-lock.json
   it("should handle large diffs by truncating", () => {
     // Create a large diff (>4000 tokens = ~16000 chars)
     const longDiff = Array(300)
-      .fill("+const line = 'this is a deliberately long line that significantly adds to the total estimated token count of the diff output for testing purposes';")
+      .fill(
+        "+const line = 'this is a deliberately long line that significantly adds to the total estimated token count of the diff output for testing purposes';",
+      )
       .join("\n");
 
     const rawDiff = `diff --git a/src/big.ts b/src/big.ts
@@ -192,9 +196,7 @@ ${longDiff}
     const sourceContent = Array(60)
       .fill("+const x = 'source code';")
       .join("\n");
-    const configContent = Array(60)
-      .fill("+config_key: value")
-      .join("\n");
+    const configContent = Array(60).fill("+config_key: value").join("\n");
 
     const rawDiff = [
       makeLongDiff("src/main.ts", sourceContent),
