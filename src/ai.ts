@@ -3,6 +3,7 @@ import { OllamaProvider } from "./providers/ollama.js";
 import { GroqProvider } from "./providers/groq.js";
 import { OpenAIProvider } from "./providers/openai.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
+import { GeminiProvider } from "./providers/gemini.js";
 
 export function createProvider(
   providerName: string,
@@ -17,9 +18,11 @@ export function createProvider(
       return new OpenAIProvider(model);
     case "anthropic":
       return new AnthropicProvider(model);
+    case "gemini":
+      return new GeminiProvider(model);
     default:
       throw new Error(
-        `Unknown provider "${providerName}". Available: ollama, groq, openai, anthropic`,
+        `Unknown provider "${providerName}". Available: ollama, groq, openai, anthropic, gemini`,
       );
   }
 }
@@ -60,7 +63,9 @@ export async function resolveProvider(
       "     The model downloads automatically on first run.\n\n" +
       "  2. Set GROQ_API_KEY for free cloud inference:\n" +
       "     https://console.groq.com/keys\n\n" +
-      "  3. Set OPENAI_API_KEY or ANTHROPIC_API_KEY for paid providers",
+      "  3. Set GEMINI_API_KEY for free Google Gemini:\n" +
+      "     https://aistudio.google.com/apikey\n\n" +
+      "  4. Set OPENAI_API_KEY or ANTHROPIC_API_KEY for paid providers",
   );
 }
 
@@ -74,6 +79,8 @@ function getProviderHelp(provider: string): string {
       return "Set OPENAI_API_KEY environment variable.";
     case "anthropic":
       return "Set ANTHROPIC_API_KEY environment variable.";
+    case "gemini":
+      return "Set GEMINI_API_KEY environment variable. Get a free key at https://aistudio.google.com/apikey";
     default:
       return "";
   }

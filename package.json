@@ -38,6 +38,7 @@
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@google/generative-ai": "^0.24.1",
     "@octokit/rest": "^22.0.1",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",

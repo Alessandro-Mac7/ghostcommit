@@ -17,5 +17,9 @@ Thumbs.db
 .env
 .env.local
 
+# Claude
+CLAUDE.md
+.claude/
+
 # Coverage
 coverage/
