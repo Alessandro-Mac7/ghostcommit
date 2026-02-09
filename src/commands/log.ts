@@ -1,6 +1,5 @@
 import { writeFile } from "node:fs/promises";
 import chalk from "chalk";
-import { createInterface } from "node:readline";
 import {
   isGitRepo,
   getCommitsBetween,
@@ -18,11 +17,6 @@ import { editMessage } from "../interactive.js";
 type LogAction = "accept" | "write" | "edit" | "cancel";
 
 async function promptLogAction(outputFile: string): Promise<LogAction> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
   return new Promise((resolve) => {
     const line = chalk.dim("\u2500".repeat(40));
     process.stdout.write(`\n${line}\n`);
@@ -30,35 +24,51 @@ async function promptLogAction(outputFile: string): Promise<LogAction> {
       `${chalk.green("[A]ccept")}  ${chalk.blue(`[W]rite to ${outputFile}`)}  ${chalk.yellow("[E]dit")}  ${chalk.red("[C]ancel")}? `,
     );
 
-    rl.on("line", (input) => {
-      rl.close();
-      const key = input.trim().toLowerCase();
+    const stdin = process.stdin;
+    const wasRaw = stdin.isRaw;
+
+    if (stdin.isTTY) {
+      stdin.setRawMode(true);
+    }
+    stdin.resume();
+
+    const onData = (data: Buffer) => {
+      const key = data.toString().toLowerCase();
+      cleanup();
+
       switch (key) {
         case "a":
-        case "accept":
+          process.stdout.write("a\n");
           resolve("accept");
           break;
         case "w":
-        case "write":
+          process.stdout.write("w\n");
           resolve("write");
           break;
         case "e":
-        case "edit":
+          process.stdout.write("e\n");
           resolve("edit");
           break;
         case "c":
-        case "cancel":
-        case "":
+        case "\u0003":
+        case "\u001b":
+          process.stdout.write("\n");
           resolve("cancel");
           break;
         default:
-          resolve("cancel");
+          break;
       }
-    });
+    };
 
-    rl.on("close", () => {
-      resolve("cancel");
-    });
+    const cleanup = () => {
+      stdin.removeListener("data", onData);
+      if (stdin.isTTY) {
+        stdin.setRawMode(wasRaw ?? false);
+      }
+      stdin.pause();
+    };
+
+    stdin.on("data", onData);
   });
 }
 

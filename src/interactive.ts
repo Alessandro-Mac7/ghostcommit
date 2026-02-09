@@ -12,11 +12,6 @@ const execFileAsync = promisify(execFile);
 export type InteractiveAction = "accept" | "edit" | "regenerate" | "cancel";
 
 export async function promptAction(): Promise<InteractiveAction> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
   return new Promise((resolve) => {
     const line = chalk.dim("─".repeat(40));
     process.stdout.write(`\n${line}\n`);
@@ -24,35 +19,52 @@ export async function promptAction(): Promise<InteractiveAction> {
       `${chalk.green("[A]ccept")}  ${chalk.blue("[E]dit")}  ${chalk.yellow("[R]egenerate")}  ${chalk.red("[C]ancel")}? `,
     );
 
-    rl.on("line", (input) => {
-      rl.close();
-      const key = input.trim().toLowerCase();
+    const stdin = process.stdin;
+    const wasRaw = stdin.isRaw;
+
+    if (stdin.isTTY) {
+      stdin.setRawMode(true);
+    }
+    stdin.resume();
+
+    const onData = (data: Buffer) => {
+      const key = data.toString().toLowerCase();
+      cleanup();
+
       switch (key) {
         case "a":
-        case "accept":
+          process.stdout.write("a\n");
           resolve("accept");
           break;
         case "e":
-        case "edit":
+          process.stdout.write("e\n");
           resolve("edit");
           break;
         case "r":
-        case "regenerate":
+          process.stdout.write("r\n");
           resolve("regenerate");
           break;
         case "c":
-        case "cancel":
-        case "":
+        case "\u0003": // Ctrl+C
+        case "\u001b": // Escape
+          process.stdout.write("\n");
           resolve("cancel");
           break;
         default:
-          resolve("cancel");
+          // Ignore unknown keys, wait for valid input
+          break;
       }
-    });
+    };
 
-    rl.on("close", () => {
-      resolve("cancel");
-    });
+    const cleanup = () => {
+      stdin.removeListener("data", onData);
+      if (stdin.isTTY) {
+        stdin.setRawMode(wasRaw ?? false);
+      }
+      stdin.pause();
+    };
+
+    stdin.on("data", onData);
   });
 }
 

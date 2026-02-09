@@ -7,6 +7,10 @@
 
 AI-powered commit message generator that **learns your style**, works **free out-of-the-box**, and handles diffs intelligently.
 
+<p align="center">
+  <img src="demo.gif" alt="ghostcommit demo" width="900">
+</p>
+
 ## Why ghostcommit?
 
 - **Free out-of-the-box** - Works instantly with Groq (free API) or Ollama (local). No paid accounts required.
