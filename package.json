@@ -1,0 +1,56 @@
+{
+  "name": "ghostcommit",
+  "version": "1.0.0",
+  "description": "Your commits, ghostwritten by AI. Local-first commit message generator that learns your style.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ghostcommit": "./bin/ghostcommit.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "git",
+    "cli",
+    "commit",
+    "conventional-commits",
+    "ollama",
+    "commit-message",
+    "local-first"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@octokit/rest": "^22.0.1",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "groq-sdk": "^0.8.0",
+    "inquirer": "^12.3.2",
+    "openai": "^4.85.4",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

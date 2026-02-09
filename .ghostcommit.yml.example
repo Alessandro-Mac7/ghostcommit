@@ -1,0 +1,25 @@
+# ghostcommit configuration
+# Place this file as .ghostcommit.yml in your project root or ~/.ghostcommit.yml for global config
+# Project config overrides global config. CLI flags override both.
+
+# AI provider: ollama (default), groq, openai, anthropic
+provider: ollama
+
+# Model override (uses provider default if not set)
+# model: llama3.1
+
+# Language for commit messages
+language: en
+
+# Learn commit style from repo history
+learnStyle: true
+learnStyleCommits: 50
+
+# Additional paths to ignore in diff analysis
+ignorePaths:
+  # - "*.generated.ts"
+  # - "migrations/"
+
+# Extract ticket references from branch names
+branchPrefix: true
+branchPattern: "[A-Z]+-\\d+"
