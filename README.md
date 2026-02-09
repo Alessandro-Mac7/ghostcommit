@@ -22,6 +22,8 @@ AI-powered commit message generator that **learns your style**, works **free out
 - **Streaming output** - See the message as it generates, not a spinner.
 - **Changelog generation** - Generate changelogs from your commit history with `ghostcommit log`.
 - **GitHub Releases** - Create GitHub releases with auto-generated notes via `ghostcommit release`.
+- **Git hook** - Install a `prepare-commit-msg` hook so every `git commit` gets an AI message automatically.
+- **Amend** - Rewrite the last commit message with AI via `ghostcommit amend`.
 
 ## Quick Start
 
@@ -85,6 +87,16 @@ ghostcommit --model gpt-4o                        # Override model
 ghostcommit --yes                                 # Auto-accept (great for scripts/CI)
 ghostcommit --dry-run                             # Preview without committing
 ghostcommit --no-style                            # Skip style learning
+
+# Amend last commit message
+ghostcommit amend                                 # Regenerate last commit message
+ghostcommit amend --context "actually a refactor" # With extra context
+ghostcommit amend --dry-run                       # Preview without amending
+ghostcommit amend --yes                           # Auto-accept
+
+# Git hook (auto-generate on every git commit)
+ghostcommit hook install                          # Install prepare-commit-msg hook
+ghostcommit hook uninstall                        # Remove the hook
 
 # Changelog
 ghostcommit log                                   # Generate changelog from last tag
@@ -211,6 +223,40 @@ ghostcommit log --format json      # JSON output
 ```
 
 Uses hybrid categorization: regex for conventional commits (instant), AI only for freeform messages.
+
+### Git Hook
+
+Install a `prepare-commit-msg` hook so every `git commit` automatically gets an AI-generated message:
+
+```bash
+ghostcommit hook install
+```
+
+Now just use git as usual — the message is pre-filled for you:
+
+```bash
+git add src/auth.ts
+git commit                    # message auto-generated, opens editor to review
+git commit -m "my message"    # hook skips when you provide -m (your message wins)
+```
+
+To remove the hook:
+
+```bash
+ghostcommit hook uninstall
+```
+
+The hook never blocks your commit. If ghostcommit fails (no API key, network error), `git commit` proceeds normally.
+
+### Amend
+
+Rewrite the last commit message with a fresh AI-generated one:
+
+```bash
+ghostcommit amend
+```
+
+Shows the current message, generates a new one from the same diff, and lets you accept, edit, regenerate, or cancel. Supports `--context`, `--dry-run`, `--yes`, and all provider flags.
 
 ### GitHub Releases
 
