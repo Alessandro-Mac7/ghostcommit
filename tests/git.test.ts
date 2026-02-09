@@ -177,4 +177,65 @@ describe("git module", () => {
       expect(stats.deletions).toBe(0);
     });
   });
+
+  describe("getGitHooksDir", () => {
+    it("should return hooks directory path", async () => {
+      mockExec.mockResolvedValue({
+        stdout: "/repo/.git/hooks\n",
+        stderr: "",
+      });
+      const { getGitHooksDir } = await import("../src/git.js");
+      const dir = await getGitHooksDir();
+      expect(dir).toBe("/repo/.git/hooks");
+    });
+  });
+
+  describe("getLastCommitMessage", () => {
+    it("should return last commit message", async () => {
+      mockExec.mockResolvedValue({
+        stdout: "feat: add login page\n",
+        stderr: "",
+      });
+      const { getLastCommitMessage } = await import("../src/git.js");
+      const msg = await getLastCommitMessage();
+      expect(msg).toBe("feat: add login page");
+    });
+  });
+
+  describe("getLastCommitDiff", () => {
+    it("should return diff between HEAD~1 and HEAD", async () => {
+      const diff = "diff --git a/file.ts b/file.ts\n+new line";
+      mockExec.mockResolvedValue({ stdout: diff, stderr: "" });
+      const { getLastCommitDiff } = await import("../src/git.js");
+      const result = await getLastCommitDiff();
+      expect(result).toBe(diff);
+      expect(mockExec).toHaveBeenCalledWith("git", ["diff", "HEAD~1", "HEAD"]);
+    });
+
+    it("should pass exclude paths", async () => {
+      mockExec.mockResolvedValue({ stdout: "", stderr: "" });
+      const { getLastCommitDiff } = await import("../src/git.js");
+      await getLastCommitDiff(["package-lock.json"]);
+      expect(mockExec).toHaveBeenCalledWith("git", [
+        "diff",
+        "HEAD~1",
+        "HEAD",
+        ":(exclude)package-lock.json",
+      ]);
+    });
+  });
+
+  describe("amendCommit", () => {
+    it("should call git commit --amend -m", async () => {
+      mockExec.mockResolvedValue({ stdout: "", stderr: "" });
+      const { amendCommit } = await import("../src/git.js");
+      await amendCommit("feat: better message");
+      expect(mockExec).toHaveBeenCalledWith("git", [
+        "commit",
+        "--amend",
+        "-m",
+        "feat: better message",
+      ]);
+    });
+  });
 });

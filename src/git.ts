@@ -204,3 +204,82 @@ export async function getFilesChanged(
   if (!stdout.trim()) return [];
   return stdout.trim().split("\n");
 }
+
+export async function getGitHooksDir(): Promise<string> {
+  const { stdout } = await exec("git", ["rev-parse", "--git-path", "hooks"]);
+  return stdout.trim();
+}
+
+export async function getLastCommitMessage(): Promise<string> {
+  const { stdout } = await exec("git", ["log", "-1", "--format=%B"]);
+  return stdout.trim();
+}
+
+export async function getLastCommitDiff(
+  excludePaths: string[] = [],
+): Promise<string> {
+  const args = ["diff", "HEAD~1", "HEAD"];
+  for (const p of excludePaths) {
+    args.push(`:(exclude)${p}`);
+  }
+  const { stdout } = await exec("git", args);
+  return stdout;
+}
+
+export async function getLastCommitDiffStats(): Promise<DiffStats> {
+  const { stdout } = await exec("git", [
+    "diff",
+    "HEAD~1",
+    "HEAD",
+    "--shortstat",
+  ]);
+  const text = stdout.trim();
+  if (!text) {
+    return { filesChanged: 0, insertions: 0, deletions: 0 };
+  }
+
+  const filesMatch = text.match(/(\d+) file/);
+  const insertionsMatch = text.match(/(\d+) insertion/);
+  const deletionsMatch = text.match(/(\d+) deletion/);
+
+  return {
+    filesChanged: filesMatch ? parseInt(filesMatch[1], 10) : 0,
+    insertions: insertionsMatch ? parseInt(insertionsMatch[1], 10) : 0,
+    deletions: deletionsMatch ? parseInt(deletionsMatch[1], 10) : 0,
+  };
+}
+
+export async function getLastCommitFiles(): Promise<StagedFile[]> {
+  const { stdout } = await exec("git", [
+    "diff",
+    "HEAD~1",
+    "HEAD",
+    "--name-status",
+  ]);
+  if (!stdout.trim()) return [];
+
+  return stdout
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const parts = line.split("\t");
+      const statusCode = parts[0];
+
+      if (statusCode.startsWith("R")) {
+        return {
+          status: "R" as const,
+          path: parts[2],
+          oldPath: parts[1],
+        };
+      }
+
+      return {
+        status: statusCode as StagedFile["status"],
+        path: parts[1],
+      };
+    });
+}
+
+export async function amendCommit(message: string): Promise<void> {
+  await exec("git", ["commit", "--amend", "-m", message]);
+}
