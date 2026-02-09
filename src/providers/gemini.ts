@@ -16,6 +16,10 @@ export class GeminiProvider implements AIProvider {
     return !!this.apiKey;
   }
 
+  getTokenBudget(): number {
+    return 900000;
+  }
+
   async generate(prompt: string, systemPrompt: string): Promise<string> {
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const client = new GoogleGenerativeAI(this.apiKey);

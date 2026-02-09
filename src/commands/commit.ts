@@ -1,5 +1,9 @@
 import chalk from "chalk";
-import { generateCommitMessage, resolveProvider } from "../ai.js";
+import {
+  generateCommitMessage,
+  isTokenLimitError,
+  resolveProvider,
+} from "../ai.js";
 import type { CLIFlags } from "../config.js";
 import { loadConfig } from "../config.js";
 import {
@@ -23,7 +27,11 @@ import {
   editMessage,
   promptAction,
 } from "../interactive.js";
-import { buildSystemPrompt, buildUserPrompt } from "../prompt.js";
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  estimatePromptOverhead,
+} from "../prompt.js";
 import { learnStyle } from "../style-learner.js";
 
 export async function runCommit(options: {
@@ -81,8 +89,6 @@ export async function runCommit(options: {
     ...config.ignorePaths,
   ];
   const rawDiff = await getStagedDiff(gitExcludes);
-  const processed = processDiff(rawDiff, stagedFiles, config.ignorePaths);
-  const formattedDiff = formatDiffForPrompt(processed);
 
   // Style learning
   let styleContext = "";
@@ -94,32 +100,78 @@ export async function runCommit(options: {
   // Branch context
   const branchName = config.branchPrefix ? await getBranchName() : undefined;
 
-  // Build prompts
-  const systemPrompt = buildSystemPrompt({
-    styleContext,
-    language: config.language,
-  });
-  const userPrompt = buildUserPrompt({
-    diff: formattedDiff,
-    styleContext,
-    branchName,
-    branchPattern: config.branchPattern,
-    userContext: options.context,
-  });
-
   // Resolve AI provider
   const provider = await resolveProvider(config.provider, config.model);
   console.log(chalk.dim(`Using ${provider.name}...\n`));
 
-  // Generate loop (for regeneration)
+  // Calculate token budget: config override → provider default
+  const providerBudget = config.tokenBudget ?? provider.getTokenBudget();
+  const promptOverhead = estimatePromptOverhead({
+    styleContext,
+    language: config.language,
+    branchName,
+    branchPattern: config.branchPattern,
+    userContext: options.context,
+  });
+  const RESPONSE_RESERVE = 500;
+
+  // Generate loop (for regeneration) with retry on token limit errors
   let done = false;
   while (!done) {
-    const message = await generateCommitMessage(
-      provider,
-      userPrompt,
-      systemPrompt,
-      !options.yes, // stream only in interactive mode
-    );
+    let message: string | undefined;
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const diffBudget = Math.max(
+        500,
+        Math.floor(
+          (providerBudget - promptOverhead - RESPONSE_RESERVE) / 2 ** attempt,
+        ),
+      );
+
+      if (attempt > 0) {
+        console.log(
+          chalk.yellow(
+            `Retrying with compressed diff (budget: ${diffBudget} tokens)...\n`,
+          ),
+        );
+      }
+
+      const processed = processDiff(
+        rawDiff,
+        stagedFiles,
+        config.ignorePaths,
+        diffBudget,
+      );
+      const formattedDiff = formatDiffForPrompt(processed);
+
+      const systemPrompt = buildSystemPrompt({
+        styleContext,
+        language: config.language,
+      });
+      const userPrompt = buildUserPrompt({
+        diff: formattedDiff,
+        styleContext,
+        branchName,
+        branchPattern: config.branchPattern,
+        userContext: options.context,
+      });
+
+      try {
+        message = await generateCommitMessage(
+          provider,
+          userPrompt,
+          systemPrompt,
+          !options.yes, // stream only in interactive mode
+        );
+        break; // success
+      } catch (error) {
+        if (isTokenLimitError(error) && attempt < MAX_RETRIES - 1) {
+          continue; // retry with smaller budget
+        }
+        throw error;
+      }
+    }
 
     if (!message) {
       throw new Error("AI returned an empty commit message. Try again.");

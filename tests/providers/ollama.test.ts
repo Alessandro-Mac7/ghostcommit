@@ -32,6 +32,12 @@ describe("OllamaProvider", () => {
     vi.restoreAllMocks();
   });
 
+  describe("getTokenBudget", () => {
+    it("should return 4000", () => {
+      expect(provider.getTokenBudget()).toBe(4000);
+    });
+  });
+
   describe("isAvailable", () => {
     it("should return true when Ollama responds", async () => {
       vi.spyOn(global, "fetch").mockResolvedValue(

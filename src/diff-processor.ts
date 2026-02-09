@@ -48,8 +48,14 @@ const SOURCE_EXTENSIONS = [
   ".svelte",
 ];
 
-const TOKEN_LIMIT = 2000;
-const MAX_LINES_PER_FILE = 60;
+export const DEFAULT_TOKEN_LIMIT = 2000;
+const DEFAULT_MAX_LINES_PER_FILE = 60;
+
+function getMaxLinesPerFile(tokenBudget: number): number {
+  if (tokenBudget > 10000) return 200;
+  if (tokenBudget > 4000) return 100;
+  return DEFAULT_MAX_LINES_PER_FILE;
+}
 
 export interface FileChunk {
   path: string;
@@ -174,6 +180,7 @@ export function processDiff(
   rawDiff: string,
   stagedFiles: StagedFile[],
   extraIgnorePaths: string[] = [],
+  tokenBudget: number = DEFAULT_TOKEN_LIMIT,
 ): ProcessedDiff {
   if (!rawDiff.trim()) {
     return {
@@ -203,10 +210,11 @@ export function processDiff(
   // Check token usage
   const fullDiff = chunks.map((c) => c.diff).join("\n");
   const totalTokens = estimateTokens(fullDiff);
+  const maxLines = getMaxLinesPerFile(tokenBudget);
 
   let wasTruncated = false;
 
-  if (totalTokens > TOKEN_LIMIT) {
+  if (totalTokens > tokenBudget) {
     wasTruncated = true;
 
     // Sort: source files first, then by size (smaller first to include more)
@@ -220,14 +228,14 @@ export function processDiff(
     // Truncate individual large files
     for (const chunk of chunks) {
       const lines = chunk.diff.split("\n");
-      if (lines.length > MAX_LINES_PER_FILE) {
-        chunk.diff = truncateLines(chunk.diff, MAX_LINES_PER_FILE);
+      if (lines.length > maxLines) {
+        chunk.diff = truncateLines(chunk.diff, maxLines);
       }
     }
 
     // If still too large, keep only source files + summary of the rest
     const truncatedDiff = chunks.map((c) => c.diff).join("\n");
-    if (estimateTokens(truncatedDiff) > TOKEN_LIMIT) {
+    if (estimateTokens(truncatedDiff) > tokenBudget) {
       const sourceChunks = chunks.filter((c) => isSourceFile(c.path));
       const otherChunks = chunks.filter((c) => !isSourceFile(c.path));
 
@@ -237,7 +245,7 @@ export function processDiff(
 
         // Truncate source files if still too big
         for (const chunk of chunks) {
-          chunk.diff = truncateLines(chunk.diff, MAX_LINES_PER_FILE);
+          chunk.diff = truncateLines(chunk.diff, maxLines);
         }
       }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_TOKEN_LIMIT,
   formatDiffForPrompt,
   parseDiffIntoChunks,
   processDiff,
@@ -237,6 +238,62 @@ diff --git a/migrations/001.sql b/migrations/001.sql
     expect(result.wasFiltered).toBe(true);
     expect(result.chunks).toHaveLength(1);
     expect(result.chunks[0].path).toBe("src/index.ts");
+  });
+});
+
+describe("processDiff with tokenBudget", () => {
+  const makeDiff = (path: string, lines: number) => {
+    const content = Array(lines).fill("+const x = 'line of code';").join("\n");
+    return `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -1 +1,${lines} @@\n${content}`;
+  };
+
+  it("should export DEFAULT_TOKEN_LIMIT", () => {
+    expect(DEFAULT_TOKEN_LIMIT).toBe(2000);
+  });
+
+  it("should truncate more aggressively with small budget", () => {
+    // Create a diff that's ~3000 tokens (~12000 chars)
+    const rawDiff = makeDiff("src/big.ts", 200);
+    const stagedFiles: StagedFile[] = [{ status: "M", path: "src/big.ts" }];
+
+    const smallBudget = processDiff(rawDiff, stagedFiles, [], 500);
+    const largeBudget = processDiff(rawDiff, stagedFiles, [], 50000);
+
+    // Small budget should truncate, large budget may not
+    expect(smallBudget.wasTruncated).toBe(true);
+    // The small-budget output should be shorter
+    const smallTotal = smallBudget.chunks.map((c) => c.diff).join("\n").length;
+    const largeTotal = largeBudget.chunks.map((c) => c.diff).join("\n").length;
+    expect(smallTotal).toBeLessThanOrEqual(largeTotal);
+  });
+
+  it("should allow larger diffs with large budget", () => {
+    // ~2500+ tokens of diff — would be truncated at default 2000, but not at 50000
+    const rawDiff = makeDiff("src/main.ts", 400);
+    const stagedFiles: StagedFile[] = [{ status: "M", path: "src/main.ts" }];
+
+    const defaultResult = processDiff(rawDiff, stagedFiles, []);
+    const largeResult = processDiff(rawDiff, stagedFiles, [], 50000);
+
+    expect(defaultResult.wasTruncated).toBe(true);
+    expect(largeResult.wasTruncated).toBe(false);
+  });
+
+  it("should use default budget when not specified", () => {
+    // Same diff should produce same result with explicit default
+    const rawDiff = makeDiff("src/a.ts", 100);
+    const stagedFiles: StagedFile[] = [{ status: "M", path: "src/a.ts" }];
+
+    const implicitDefault = processDiff(rawDiff, stagedFiles, []);
+    const explicitDefault = processDiff(
+      rawDiff,
+      stagedFiles,
+      [],
+      DEFAULT_TOKEN_LIMIT,
+    );
+
+    expect(implicitDefault.wasTruncated).toBe(explicitDefault.wasTruncated);
+    expect(implicitDefault.chunks.length).toBe(explicitDefault.chunks.length);
   });
 });
 

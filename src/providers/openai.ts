@@ -16,6 +16,10 @@ export class OpenAIProvider implements AIProvider {
     return !!this.apiKey;
   }
 
+  getTokenBudget(): number {
+    return 120000;
+  }
+
   async generate(prompt: string, systemPrompt: string): Promise<string> {
     const { default: OpenAI } = await import("openai");
     const client = new OpenAI({ apiKey: this.apiKey });

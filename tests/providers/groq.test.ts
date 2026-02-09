@@ -23,6 +23,22 @@ describe("GroqProvider", () => {
     vi.restoreAllMocks();
   });
 
+  describe("getTokenBudget", () => {
+    it("should return 10000 for llama-3.3-70b-versatile", () => {
+      expect(provider.getTokenBudget()).toBe(10000);
+    });
+
+    it("should return 5000 for llama-3.1-8b-instant", () => {
+      const p = new GroqProvider("llama-3.1-8b-instant");
+      expect(p.getTokenBudget()).toBe(5000);
+    });
+
+    it("should return 6000 for unknown models", () => {
+      const p = new GroqProvider("some-future-model");
+      expect(p.getTokenBudget()).toBe(6000);
+    });
+  });
+
   describe("isAvailable", () => {
     it("should return true when API key is set", async () => {
       expect(await provider.isAvailable()).toBe(true);

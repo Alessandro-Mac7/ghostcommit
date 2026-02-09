@@ -1,4 +1,4 @@
-import { extractTicketFromBranch } from "./utils.js";
+import { estimateTokens, extractTicketFromBranch } from "./utils.js";
 
 const BASE_SYSTEM_PROMPT = `You are ghostcommit, an AI that writes git commit messages.
 
@@ -82,4 +82,25 @@ export function buildUserPrompt(options: PromptOptions): string {
   parts.push(options.diff);
 
   return parts.join("\n");
+}
+
+/** Estimate token overhead of system + user prompts (excluding the diff). */
+export function estimatePromptOverhead(options: {
+  styleContext?: string;
+  language?: string;
+  branchName?: string;
+  branchPattern?: string;
+  userContext?: string;
+}): number {
+  const systemPrompt = buildSystemPrompt({
+    styleContext: options.styleContext,
+    language: options.language,
+  });
+  const userPrompt = buildUserPrompt({
+    diff: "",
+    branchName: options.branchName,
+    branchPattern: options.branchPattern,
+    userContext: options.userContext,
+  });
+  return estimateTokens(systemPrompt) + estimateTokens(userPrompt);
 }

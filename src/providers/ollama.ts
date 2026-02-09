@@ -49,6 +49,10 @@ export class OllamaProvider implements AIProvider {
     }
   }
 
+  getTokenBudget(): number {
+    return 4000;
+  }
+
   /** Check if a specific model is already pulled locally. */
   async hasModel(model?: string): Promise<boolean> {
     try {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildSystemPrompt, buildUserPrompt } from "../src/prompt.js";
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  estimatePromptOverhead,
+} from "../src/prompt.js";
 
 describe("buildSystemPrompt", () => {
   it("should include base rules", () => {
@@ -130,5 +134,44 @@ describe("buildUserPrompt", () => {
     expect(prompt).toContain("minimal diff");
     expect(prompt).not.toContain("BRANCH:");
     expect(prompt).not.toContain("DEVELOPER CONTEXT");
+  });
+});
+
+describe("estimatePromptOverhead", () => {
+  it("should return a positive number for minimal options", () => {
+    const overhead = estimatePromptOverhead({});
+    expect(overhead).toBeGreaterThan(0);
+  });
+
+  it("should increase with style context", () => {
+    const base = estimatePromptOverhead({});
+    const withStyle = estimatePromptOverhead({
+      styleContext:
+        "STYLE GUIDE:\n- Format: conventional commits\n- Common scopes: auth, api, db",
+    });
+    expect(withStyle).toBeGreaterThan(base);
+  });
+
+  it("should increase with branch and user context", () => {
+    const base = estimatePromptOverhead({});
+    const withContext = estimatePromptOverhead({
+      branchName: "feature/PROJ-123-add-oauth",
+      userContext: "migrated from REST to gRPC for performance reasons",
+    });
+    expect(withContext).toBeGreaterThan(base);
+  });
+
+  it("should produce overhead consistent with actual prompts", () => {
+    const overhead = estimatePromptOverhead({
+      styleContext: "STYLE GUIDE: conventional commits",
+      language: "en",
+      branchName: "feature/PROJ-123",
+      userContext: "added auth",
+    });
+
+    // The base system prompt alone is ~400 chars (~100 tokens)
+    // With all options, overhead should be roughly 100-500 tokens
+    expect(overhead).toBeGreaterThan(50);
+    expect(overhead).toBeLessThan(1000);
   });
 });

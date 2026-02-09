@@ -26,6 +26,7 @@ export interface GhostcommitConfig {
   ignorePaths: string[];
   branchPrefix: boolean;
   branchPattern: string;
+  tokenBudget?: number;
   changelog: ChangelogConfig;
   release: ReleaseConfig;
 }
@@ -40,6 +41,7 @@ function createDefaults(): GhostcommitConfig {
     ignorePaths: [],
     branchPrefix: true,
     branchPattern: "[A-Z]+-\\d+",
+    tokenBudget: undefined,
     changelog: {
       format: "markdown",
       output: "CHANGELOG.md",
@@ -159,6 +161,7 @@ function mergeConfig(
         : [...base.ignorePaths],
     branchPrefix: overrides.branchPrefix ?? base.branchPrefix,
     branchPattern: overrides.branchPattern ?? base.branchPattern,
+    tokenBudget: overrides.tokenBudget ?? base.tokenBudget,
     changelog: overrides.changelog
       ? mergeChangelog(
           base.changelog,

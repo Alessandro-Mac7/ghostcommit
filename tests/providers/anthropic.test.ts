@@ -25,6 +25,12 @@ describe("AnthropicProvider", () => {
     vi.restoreAllMocks();
   });
 
+  describe("getTokenBudget", () => {
+    it("should return 180000", () => {
+      expect(provider.getTokenBudget()).toBe(180000);
+    });
+  });
+
   describe("isAvailable", () => {
     it("should return true when API key is set", async () => {
       expect(await provider.isAvailable()).toBe(true);

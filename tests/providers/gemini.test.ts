@@ -30,6 +30,12 @@ describe("GeminiProvider", () => {
     vi.restoreAllMocks();
   });
 
+  describe("getTokenBudget", () => {
+    it("should return 900000", () => {
+      expect(provider.getTokenBudget()).toBe(900000);
+    });
+  });
+
   describe("isAvailable", () => {
     it("should return true when API key is set", async () => {
       expect(await provider.isAvailable()).toBe(true);

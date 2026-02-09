@@ -86,6 +86,22 @@ function getProviderHelp(provider: string): string {
   }
 }
 
+const TOKEN_LIMIT_PATTERNS = [
+  /413/,
+  /rate.?limit/i,
+  /context.?length.?exceeded/i,
+  /too.?large/i,
+  /too.?many.?tokens/i,
+  /token.?limit/i,
+  /maximum.?context/i,
+  /request.?too.?large/i,
+];
+
+export function isTokenLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return TOKEN_LIMIT_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 export async function generateCommitMessage(
   provider: AIProvider,
   userPrompt: string,

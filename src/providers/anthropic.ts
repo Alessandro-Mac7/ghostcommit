@@ -16,6 +16,10 @@ export class AnthropicProvider implements AIProvider {
     return !!this.apiKey;
   }
 
+  getTokenBudget(): number {
+    return 180000;
+  }
+
   async generate(prompt: string, systemPrompt: string): Promise<string> {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey: this.apiKey });

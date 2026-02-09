@@ -23,6 +23,12 @@ describe("OpenAIProvider", () => {
     vi.restoreAllMocks();
   });
 
+  describe("getTokenBudget", () => {
+    it("should return 120000", () => {
+      expect(provider.getTokenBudget()).toBe(120000);
+    });
+  });
+
   describe("isAvailable", () => {
     it("should return true when API key is set", async () => {
       expect(await provider.isAvailable()).toBe(true);
