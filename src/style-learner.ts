@@ -1,9 +1,9 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getRecentCommits, getGitRootDir } from "./git.js";
 import type { CommitInfo } from "./git.js";
+import { getGitRootDir, getRecentCommits } from "./git.js";
 
-const CONVENTIONAL_TYPES = [
+const _CONVENTIONAL_TYPES = [
   "feat",
   "fix",
   "docs",
@@ -17,7 +17,8 @@ const CONVENTIONAL_TYPES = [
   "revert",
 ];
 
-const EMOJI_REGEX = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|:\w+:/u;
+const EMOJI_REGEX =
+  /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|:\w+:/u;
 
 const COMMON_ENGLISH_WORDS = [
   "add",
@@ -106,6 +107,7 @@ export function analyzeCommits(commits: CommitInfo[]): StyleAnalysis {
   let scopeCount = 0;
   let emojiCount = 0;
   let lowercaseCount = 0;
+  let bodyCount = 0;
   let totalLength = 0;
   const scopes: Record<string, number> = {};
   let englishScore = 0;
@@ -115,6 +117,11 @@ export function analyzeCommits(commits: CommitInfo[]): StyleAnalysis {
   for (const commit of commits) {
     const msg = commit.message;
     totalLength += msg.length;
+
+    // Body detection
+    if (commit.body) {
+      bodyCount++;
+    }
 
     // Conventional commits detection
     const ccMatch = msg.match(
@@ -149,9 +156,7 @@ export function analyzeCommits(commits: CommitInfo[]): StyleAnalysis {
     }
 
     // Ticket pattern detection
-    const ticketMatch = msg.match(
-      /([A-Z]+-\d+)|#(\d+)|(?:refs?\s+#?\d+)/i,
-    );
+    const ticketMatch = msg.match(/([A-Z]+-\d+)|#(\d+)|(?:refs?\s+#?\d+)/i);
     if (ticketMatch) {
       const pattern = ticketMatch[0].replace(/\d+/g, "N");
       ticketPatterns[pattern] = (ticketPatterns[pattern] || 0) + 1;
@@ -190,8 +195,8 @@ export function analyzeCommits(commits: CommitInfo[]): StyleAnalysis {
     commonScopes,
     language,
     averageSubjectLength: Math.round(totalLength / n),
-    usesBody: false, // Detected from full commit messages (not available from subject-only log)
-    bodyRatio: 0,
+    usesBody: bodyCount / n > 0.2,
+    bodyRatio: bodyCount / n,
     usesEmoji: emojiCount / n > 0.2,
     emojiRatio: emojiCount / n,
     usesLowercase: lowercaseCount / n > 0.7,
@@ -232,7 +237,9 @@ export function buildStyleContext(analysis: StyleAnalysis): string {
   }
 
   // Length
-  lines.push(`- Average subject length: ${analysis.averageSubjectLength} chars`);
+  lines.push(
+    `- Average subject length: ${analysis.averageSubjectLength} chars`,
+  );
 
   // Body
   if (analysis.bodyRatio > 0) {
@@ -268,10 +275,7 @@ async function loadCache(cacheFile: string): Promise<CacheData | null> {
   }
 }
 
-async function saveCache(
-  cacheFile: string,
-  data: CacheData,
-): Promise<void> {
+async function saveCache(cacheFile: string, data: CacheData): Promise<void> {
   await writeFile(cacheFile, JSON.stringify(data, null, 2));
 }
 

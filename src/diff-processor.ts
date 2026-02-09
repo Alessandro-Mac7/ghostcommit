@@ -1,5 +1,5 @@
-import { estimateTokens, truncateLines } from "./utils.js";
 import type { StagedFile } from "./git.js";
+import { estimateTokens, truncateLines } from "./utils.js";
 
 export const DEFAULT_IGNORE_PATTERNS = [
   "package-lock.json",
@@ -20,7 +20,12 @@ export const DEFAULT_IGNORE_GLOBS = [
   "*.map",
 ];
 
-export const DEFAULT_IGNORE_DIRS = ["dist/", "build/", ".next/", "__pycache__/"];
+export const DEFAULT_IGNORE_DIRS = [
+  "dist/",
+  "build/",
+  ".next/",
+  "__pycache__/",
+];
 
 const SOURCE_EXTENSIONS = [
   ".ts",
@@ -98,16 +103,17 @@ export function shouldIgnoreFile(
   return false;
 }
 
+const globCache = new Map<string, RegExp>();
+
 function matchSimpleGlob(fileName: string, pattern: string): boolean {
-  // Convert simple glob to regex: *.generated.* → .*\.generated\..*
-  const regex = new RegExp(
-    "^" +
-      pattern
-        .replace(/\./g, "\\.")
-        .replace(/\*/g, ".*")
-        .replace(/\?/g, ".") +
-      "$",
-  );
+  let regex = globCache.get(pattern);
+  if (!regex) {
+    // Convert simple glob to regex: *.generated.* → .*\.generated\..*
+    regex = new RegExp(
+      `^${pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".")}$`,
+    );
+    globCache.set(pattern, regex);
+  }
   return regex.test(fileName);
 }
 
@@ -115,7 +121,10 @@ function isSourceFile(filePath: string): boolean {
   return SOURCE_EXTENSIONS.some((ext) => filePath.endsWith(ext));
 }
 
-function countDiffChanges(diff: string): { additions: number; deletions: number } {
+function countDiffChanges(diff: string): {
+  additions: number;
+  deletions: number;
+} {
   let additions = 0;
   let deletions = 0;
   for (const line of diff.split("\n")) {
@@ -152,7 +161,7 @@ export function parseDiffIntoChunks(
       path: newPath,
       status: stagedFile?.status || "M",
       oldPath: stagedFile?.oldPath,
-      diff: "diff --git " + fileDiff,
+      diff: `diff --git ${fileDiff}`,
       additions,
       deletions,
     });

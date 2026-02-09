@@ -11,6 +11,7 @@ export interface CommitInfo {
   message: string;
   author: string;
   date: string;
+  body?: string;
 }
 
 export interface DiffStats {
@@ -28,7 +29,9 @@ export async function isGitRepo(): Promise<boolean> {
   }
 }
 
-export async function getStagedDiff(excludePaths: string[] = []): Promise<string> {
+export async function getStagedDiff(
+  excludePaths: string[] = [],
+): Promise<string> {
   const args = ["diff", "--staged"];
   for (const p of excludePaths) {
     args.push(`:(exclude)${p}`);
@@ -38,11 +41,7 @@ export async function getStagedDiff(excludePaths: string[] = []): Promise<string
 }
 
 export async function getStagedFiles(): Promise<StagedFile[]> {
-  const { stdout } = await exec("git", [
-    "diff",
-    "--staged",
-    "--name-status",
-  ]);
+  const { stdout } = await exec("git", ["diff", "--staged", "--name-status"]);
   if (!stdout.trim()) return [];
 
   return stdout
@@ -70,19 +69,24 @@ export async function getStagedFiles(): Promise<StagedFile[]> {
 
 export async function getRecentCommits(n: number = 50): Promise<CommitInfo[]> {
   try {
+    // Use record separator (%x1e) between commits and null byte (%x00) between fields
+    // %b = body (without subject line)
     const { stdout } = await exec("git", [
       "log",
       `-${n}`,
-      "--format=%H%x00%s%x00%an%x00%aI",
+      "--format=%H%x00%s%x00%an%x00%aI%x00%b%x1e",
     ]);
     if (!stdout.trim()) return [];
 
     return stdout
-      .trim()
-      .split("\n")
-      .map((line) => {
-        const [hash, message, author, date] = line.split("\x00");
-        return { hash, message, author, date };
+      .split("\x1e")
+      .map((record) => record.trim())
+      .filter(Boolean)
+      .map((record) => {
+        const [hash, message, author, date, ...bodyParts] =
+          record.split("\x00");
+        const body = bodyParts.join("\x00").trim();
+        return { hash, message, author, date, body: body || undefined };
       });
   } catch {
     // No commits yet
@@ -92,11 +96,7 @@ export async function getRecentCommits(n: number = 50): Promise<CommitInfo[]> {
 
 export async function getBranchName(): Promise<string> {
   try {
-    const { stdout } = await exec("git", [
-      "rev-parse",
-      "--abbrev-ref",
-      "HEAD",
-    ]);
+    const { stdout } = await exec("git", ["rev-parse", "--abbrev-ref", "HEAD"]);
     return stdout.trim();
   } catch {
     return "HEAD";
@@ -185,11 +185,7 @@ export async function getTags(): Promise<TagInfo[]> {
 
 export async function getLatestTag(): Promise<string | null> {
   try {
-    const { stdout } = await exec("git", [
-      "describe",
-      "--tags",
-      "--abbrev=0",
-    ]);
+    const { stdout } = await exec("git", ["describe", "--tags", "--abbrev=0"]);
     return stdout.trim() || null;
   } catch {
     return null;

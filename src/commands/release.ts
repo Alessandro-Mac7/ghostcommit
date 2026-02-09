@@ -1,60 +1,36 @@
 import chalk from "chalk";
-import { createInterface } from "node:readline";
-import {
-  isGitRepo,
-  getCommitsBetween,
-  getLatestTag,
-  getTags,
-  getGitRootDir,
-} from "../git.js";
-import { parseCommits } from "../changelog/parser.js";
+import { resolveProvider } from "../ai.js";
 import { categorizeCommits } from "../changelog/categorizer.js";
 import { formatChangelog } from "../changelog/formatter.js";
-import { resolveProvider } from "../ai.js";
+import { parseCommits } from "../changelog/parser.js";
 import { loadConfig } from "../config.js";
+import {
+  getCommitsBetween,
+  getGitRootDir,
+  getLatestTag,
+  getTags,
+  isGitRepo,
+} from "../git.js";
 import {
   createRelease,
   getRepoInfo,
   isGitHubTokenAvailable,
 } from "../github.js";
+import { promptSingleKey } from "../interactive.js";
+import type { AIProvider } from "../providers/base.js";
 
 type ReleaseAction = "publish" | "cancel";
 
 async function promptReleaseAction(): Promise<ReleaseAction> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    const line = chalk.dim("\u2500".repeat(40));
-    process.stdout.write(`\n${line}\n`);
-    process.stdout.write(
-      `${chalk.green("[P]ublish release")}  ${chalk.red("[C]ancel")}? `,
-    );
-
-    rl.on("line", (input) => {
-      rl.close();
-      const key = input.trim().toLowerCase();
-      switch (key) {
-        case "p":
-        case "publish":
-          resolve("publish");
-          break;
-        case "c":
-        case "cancel":
-        case "":
-          resolve("cancel");
-          break;
-        default:
-          resolve("cancel");
-      }
-    });
-
-    rl.on("close", () => {
-      resolve("cancel");
-    });
-  });
+  return promptSingleKey([
+    {
+      key: "p",
+      label: "[P]ublish release",
+      color: chalk.green,
+      value: "publish" as const,
+    },
+    { key: "c", label: "[C]ancel", color: chalk.red, value: "cancel" as const },
+  ]);
 }
 
 export async function runRelease(options: {
@@ -89,9 +65,10 @@ export async function runRelease(options: {
   // Find previous tag to determine range
   const tags = await getTags();
   const tagIndex = tags.findIndex((t) => t.name === targetTag);
-  const previousTag = tagIndex >= 0 && tags.length > tagIndex + 1
-    ? tags[tagIndex + 1].name
-    : null;
+  const previousTag =
+    tagIndex >= 0 && tags.length > tagIndex + 1
+      ? tags[tagIndex + 1].name
+      : null;
 
   if (!previousTag) {
     throw new Error(
@@ -102,7 +79,9 @@ export async function runRelease(options: {
 
   console.log(chalk.bold("\n\uD83D\uDC7B ghostcommit release\n"));
   console.log(
-    chalk.dim(`Creating release for ${targetTag} (${previousTag}...${targetTag})`),
+    chalk.dim(
+      `Creating release for ${targetTag} (${previousTag}...${targetTag})`,
+    ),
   );
 
   // Get commits in range
@@ -130,7 +109,7 @@ export async function runRelease(options: {
   });
 
   const needsAI = parsed.some((c) => !c.type);
-  let provider;
+  let provider: AIProvider | undefined;
   if (needsAI) {
     try {
       provider = await resolveProvider(config.provider, config.model);

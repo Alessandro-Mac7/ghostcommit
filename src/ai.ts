@@ -1,9 +1,9 @@
-import type { AIProvider } from "./providers/base.js";
-import { OllamaProvider } from "./providers/ollama.js";
-import { GroqProvider } from "./providers/groq.js";
-import { OpenAIProvider } from "./providers/openai.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
+import type { AIProvider } from "./providers/base.js";
 import { GeminiProvider } from "./providers/gemini.js";
+import { GroqProvider } from "./providers/groq.js";
+import { OllamaProvider } from "./providers/ollama.js";
+import { OpenAIProvider } from "./providers/openai.js";
 
 export function createProvider(
   providerName: string,

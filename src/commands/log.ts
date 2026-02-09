@@ -1,75 +1,39 @@
 import { writeFile } from "node:fs/promises";
 import chalk from "chalk";
-import {
-  isGitRepo,
-  getCommitsBetween,
-  getLatestTag,
-  getGitRootDir,
-} from "../git.js";
-import { parseCommits } from "../changelog/parser.js";
-import { categorizeCommits } from "../changelog/categorizer.js";
-import { formatChangelog } from "../changelog/formatter.js";
-import type { OutputFormat } from "../changelog/formatter.js";
 import { resolveProvider } from "../ai.js";
+import { categorizeCommits } from "../changelog/categorizer.js";
+import type { OutputFormat } from "../changelog/formatter.js";
+import { formatChangelog } from "../changelog/formatter.js";
+import { parseCommits } from "../changelog/parser.js";
 import { loadConfig } from "../config.js";
-import { editMessage } from "../interactive.js";
+import {
+  getCommitsBetween,
+  getGitRootDir,
+  getLatestTag,
+  isGitRepo,
+} from "../git.js";
+import { editMessage, promptSingleKey } from "../interactive.js";
+import type { AIProvider } from "../providers/base.js";
 
 type LogAction = "accept" | "write" | "edit" | "cancel";
 
 async function promptLogAction(outputFile: string): Promise<LogAction> {
-  return new Promise((resolve) => {
-    const line = chalk.dim("\u2500".repeat(40));
-    process.stdout.write(`\n${line}\n`);
-    process.stdout.write(
-      `${chalk.green("[A]ccept")}  ${chalk.blue(`[W]rite to ${outputFile}`)}  ${chalk.yellow("[E]dit")}  ${chalk.red("[C]ancel")}? `,
-    );
-
-    const stdin = process.stdin;
-    const wasRaw = stdin.isRaw;
-
-    if (stdin.isTTY) {
-      stdin.setRawMode(true);
-    }
-    stdin.resume();
-
-    const onData = (data: Buffer) => {
-      const key = data.toString().toLowerCase();
-      cleanup();
-
-      switch (key) {
-        case "a":
-          process.stdout.write("a\n");
-          resolve("accept");
-          break;
-        case "w":
-          process.stdout.write("w\n");
-          resolve("write");
-          break;
-        case "e":
-          process.stdout.write("e\n");
-          resolve("edit");
-          break;
-        case "c":
-        case "\u0003":
-        case "\u001b":
-          process.stdout.write("\n");
-          resolve("cancel");
-          break;
-        default:
-          break;
-      }
-    };
-
-    const cleanup = () => {
-      stdin.removeListener("data", onData);
-      if (stdin.isTTY) {
-        stdin.setRawMode(wasRaw ?? false);
-      }
-      stdin.pause();
-    };
-
-    stdin.on("data", onData);
-  });
+  return promptSingleKey([
+    {
+      key: "a",
+      label: "[A]ccept",
+      color: chalk.green,
+      value: "accept" as const,
+    },
+    {
+      key: "w",
+      label: `[W]rite to ${outputFile}`,
+      color: chalk.blue,
+      value: "write" as const,
+    },
+    { key: "e", label: "[E]dit", color: chalk.yellow, value: "edit" as const },
+    { key: "c", label: "[C]ancel", color: chalk.red, value: "cancel" as const },
+  ]);
 }
 
 export async function runLog(options: {
@@ -89,8 +53,7 @@ export async function runLog(options: {
   }
 
   // Determine range
-  const fromRef =
-    options.from || (await getLatestTag());
+  const fromRef = options.from || (await getLatestTag());
   if (!fromRef) {
     throw new Error(
       "No tags found and no --from specified.\nCreate a tag first (git tag v0.1.0) or specify --from <ref>.",
@@ -128,7 +91,7 @@ export async function runLog(options: {
 
   // Check if any commits need AI categorization
   const needsAI = parsed.some((c) => !c.type);
-  let provider;
+  let provider: AIProvider | undefined;
   if (needsAI) {
     try {
       provider = await resolveProvider(config.provider, config.model);

@@ -65,13 +65,15 @@ function categorizeByType(commit: ParsedCommit): CategorizedCommit | null {
   if (!commit.type) return null;
 
   if (commit.breaking) {
-    return { commit, category: "Breaking Changes", summary: commit.description };
+    return {
+      commit,
+      category: "Breaking Changes",
+      summary: commit.description,
+    };
   }
 
   const category = TYPE_TO_CATEGORY[commit.type];
-  return category
-    ? { commit, category, summary: commit.description }
-    : null;
+  return category ? { commit, category, summary: commit.description } : null;
 }
 
 /** AI-based categorization with graceful fallback. */
@@ -118,7 +120,7 @@ function categorizeFallback(commit: ParsedCommit): CategorizedCommit {
 }
 
 /** Categorize a single commit using the best available strategy. */
-async function categorizeOne(
+async function _categorizeOne(
   commit: ParsedCommit,
   provider?: AIProvider,
 ): Promise<CategorizedCommit> {
@@ -145,12 +147,14 @@ export async function categorizeCommits(
 ): Promise<CategorizedCommit[]> {
   const { provider, excludePatterns = [] } = options;
 
-  const filtered = excludePatterns.length > 0
-    ? commits.filter((c) => !matchesAnyPattern(c.message, excludePatterns))
-    : commits;
+  const filtered =
+    excludePatterns.length > 0
+      ? commits.filter((c) => !matchesAnyPattern(c.message, excludePatterns))
+      : commits;
 
   // Separate commits that need AI from those that don't
-  const regexResults: (CategorizedCommit | null)[] = filtered.map(categorizeByType);
+  const regexResults: (CategorizedCommit | null)[] =
+    filtered.map(categorizeByType);
   const needsAI = filtered.filter((_, i) => regexResults[i] === null);
 
   // AI calls are sequential to respect rate limits
@@ -165,8 +169,9 @@ export async function categorizeCommits(
   }
 
   // Merge: use regex result if available, otherwise AI result
-  return filtered.map((commit, i) =>
-    regexResults[i] ?? aiResults.get(commit)!,
+  return filtered.map(
+    (commit, i) =>
+      regexResults[i] ?? aiResults.get(commit) ?? categorizeFallback(commit),
   );
 }
 

@@ -1,8 +1,8 @@
-import { Command } from "commander";
-import chalk from "chalk";
 import { readFile, writeFile } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import chalk from "chalk";
+import { Command } from "commander";
 import { runCommit } from "./commands/commit.js";
 import { runLog } from "./commands/log.js";
 import { runRelease } from "./commands/release.js";
@@ -17,9 +17,7 @@ async function getVersion(): Promise<string> {
           await readFile(join(base, "package.json"), "utf-8"),
         );
         return pkg.version || "0.0.0";
-      } catch {
-        continue;
-      }
+      } catch {}
     }
     return "0.0.0";
   } catch {
@@ -27,16 +25,43 @@ async function getVersion(): Promise<string> {
   }
 }
 
-function wrapAction(fn: (...args: unknown[]) => Promise<void>) {
-  return async (...args: unknown[]) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Commander passes parsed options as any
+function wrapAction<T>(fn: (opts: T) => Promise<void>) {
+  return async (opts: T) => {
     try {
-      await fn(...args);
+      await fn(opts);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error(chalk.red(`Error: ${msg}`));
       process.exit(1);
     }
   };
+}
+
+interface CommitOptions {
+  context?: string;
+  provider?: string;
+  model?: string;
+  yes?: boolean;
+  dryRun?: boolean;
+  style?: boolean;
+}
+
+interface LogOptions {
+  from?: string;
+  to?: string;
+  output?: string;
+  format?: string;
+  dryRun?: boolean;
+  provider?: string;
+  model?: string;
+}
+
+interface ReleaseOptions {
+  tag?: string;
+  draft?: boolean;
+  provider?: string;
+  model?: string;
 }
 
 export function createCLI(): Command {
@@ -47,14 +72,19 @@ export function createCLI(): Command {
     .name("ghostcommit")
     .description("Your commits, ghostwritten by AI")
     .option("-c, --context <text>", "extra context to guide the AI")
-    .option("-p, --provider <name>", "AI provider (ollama, groq, openai, anthropic)")
+    .option(
+      "-p, --provider <name>",
+      "AI provider (groq, ollama, gemini, openai, anthropic)",
+    )
     .option("-m, --model <name>", "model to use")
     .option("-y, --yes", "auto-accept without interactive prompt")
     .option("--dry-run", "show message without committing")
     .option("--no-style", "disable style learning from repo history")
-    .action(wrapAction(async (options) => {
-      await runCommit(options);
-    }));
+    .action(
+      wrapAction<CommitOptions>(async (options) => {
+        await runCommit(options);
+      }),
+    );
 
   // Subcommand: log (changelog generation)
   program
@@ -65,31 +95,46 @@ export function createCLI(): Command {
     .option("-o, --output <file>", "output file path")
     .option("-f, --format <format>", "output format: markdown, json, plain")
     .option("--dry-run", "preview changelog without writing")
-    .option("-p, --provider <name>", "AI provider for categorizing non-conventional commits")
+    .option(
+      "-p, --provider <name>",
+      "AI provider for categorizing non-conventional commits",
+    )
     .option("-m, --model <name>", "model to use")
-    .action(wrapAction(async (options) => {
-      await runLog(options);
-    }));
+    .action(
+      wrapAction<LogOptions>(async (options) => {
+        await runLog(options);
+      }),
+    );
 
   // Subcommand: release (GitHub Release creation)
   program
     .command("release")
     .description("create a GitHub Release with generated changelog")
-    .option("-t, --tag <tag>", "tag to create release for (default: latest tag)")
+    .option(
+      "-t, --tag <tag>",
+      "tag to create release for (default: latest tag)",
+    )
     .option("--draft", "create as draft release")
-    .option("-p, --provider <name>", "AI provider for categorizing non-conventional commits")
+    .option(
+      "-p, --provider <name>",
+      "AI provider for categorizing non-conventional commits",
+    )
     .option("-m, --model <name>", "model to use")
-    .action(wrapAction(async (options) => {
-      await runRelease(options);
-    }));
+    .action(
+      wrapAction<ReleaseOptions>(async (options) => {
+        await runRelease(options);
+      }),
+    );
 
   // Subcommand: init
   program
     .command("init")
     .description("create a .ghostcommit.yml config file")
-    .action(wrapAction(async () => {
-      await initConfig();
-    }));
+    .action(
+      wrapAction<void>(async () => {
+        await initConfig();
+      }),
+    );
 
   return program;
 }
@@ -98,13 +143,14 @@ async function initConfig(): Promise<void> {
   const template = `# ghostcommit configuration
 # See https://github.com/Alessandro-Mac7/ghostcommit for docs
 
-# AI provider: ollama (default), groq, openai, anthropic
-# provider: ollama
+# AI provider (auto-detects: groq → ollama if not set)
+# Available: groq, ollama, gemini, openai, anthropic
+# provider: groq
 
 # Model override (uses provider default if not set)
-# model: llama3.1
+# model: llama-3.3-70b-versatile
 
-# Language for commit messages
+# Language for commit messages (en, it, etc.)
 # language: en
 
 # Learn commit style from repo history
@@ -142,7 +188,9 @@ release:
 
   await writeFile(".ghostcommit.yml", template, "utf-8");
   console.log(chalk.green("Created .ghostcommit.yml"));
-  console.log(chalk.dim("Edit this file to customize ghostcommit for your project."));
+  console.log(
+    chalk.dim("Edit this file to customize ghostcommit for your project."),
+  );
 }
 
 export async function main(): Promise<void> {

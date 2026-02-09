@@ -44,7 +44,7 @@ export function formatMarkdown(
     lines.push("");
   }
 
-  return lines.join("\n").trimEnd() + "\n";
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 export interface JsonChangelog {
@@ -82,7 +82,7 @@ export function formatJSON(
   }
 
   const output: JsonChangelog = { version, date, categories };
-  return JSON.stringify(output, null, 2) + "\n";
+  return `${JSON.stringify(output, null, 2)}\n`;
 }
 
 export function formatPlain(
@@ -112,7 +112,7 @@ export function formatPlain(
     lines.push("");
   }
 
-  return lines.join("\n").trimEnd() + "\n";
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 export function formatChangelog(

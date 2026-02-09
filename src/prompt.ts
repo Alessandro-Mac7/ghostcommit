@@ -18,10 +18,30 @@ export interface PromptOptions {
   userContext?: string;
 }
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  it: "Italian",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  pt: "Portuguese",
+  ja: "Japanese",
+  ko: "Korean",
+  zh: "Chinese",
+  ru: "Russian",
+};
+
 export function buildSystemPrompt(options: {
   styleContext?: string;
+  language?: string;
 }): string {
   const parts: string[] = [BASE_SYSTEM_PROMPT];
+
+  if (options.language && options.language !== "en") {
+    const name = LANGUAGE_NAMES[options.language] || options.language;
+    parts.push("");
+    parts.push(`LANGUAGE: Write the commit message in ${name}.`);
+  }
 
   if (options.styleContext) {
     parts.push("");
@@ -42,9 +62,7 @@ export function buildUserPrompt(options: PromptOptions): string {
     );
     parts.push(`BRANCH: ${options.branchName}`);
     if (ticket) {
-      parts.push(
-        `→ Include "${ticket}" reference if appropriate.`,
-      );
+      parts.push(`→ Include "${ticket}" reference if appropriate.`);
     }
     parts.push("");
   }

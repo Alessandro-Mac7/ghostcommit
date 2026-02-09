@@ -1,30 +1,30 @@
 import chalk from "chalk";
+import { generateCommitMessage, resolveProvider } from "../ai.js";
+import type { CLIFlags } from "../config.js";
+import { loadConfig } from "../config.js";
 import {
-  isGitRepo,
-  getStagedDiff,
-  getStagedFiles,
+  DEFAULT_IGNORE_DIRS,
+  DEFAULT_IGNORE_PATTERNS,
+  formatDiffForPrompt,
+  processDiff,
+} from "../diff-processor.js";
+import {
+  createCommit,
   getBranchName,
   getDiffStats,
-  createCommit,
   getGitRootDir,
+  getStagedDiff,
+  getStagedFiles,
+  isGitRepo,
 } from "../git.js";
 import {
-  processDiff,
-  formatDiffForPrompt,
-  DEFAULT_IGNORE_PATTERNS,
-  DEFAULT_IGNORE_DIRS,
-} from "../diff-processor.js";
-import { learnStyle } from "../style-learner.js";
-import { buildSystemPrompt, buildUserPrompt } from "../prompt.js";
-import { resolveProvider, generateCommitMessage } from "../ai.js";
-import { loadConfig } from "../config.js";
-import type { CLIFlags } from "../config.js";
-import {
-  displayHeader,
   displayCommitMessage,
-  promptAction,
+  displayHeader,
   editMessage,
+  promptAction,
 } from "../interactive.js";
+import { buildSystemPrompt, buildUserPrompt } from "../prompt.js";
+import { learnStyle } from "../style-learner.js";
 
 export async function runCommit(options: {
   context?: string;
@@ -72,8 +72,14 @@ export async function runCommit(options: {
   const stats = await getDiffStats();
   displayHeader(stats.filesChanged, stats.insertions, stats.deletions);
 
-  // Get and process diff (exclude large files at git level for speed)
-  const gitExcludes = [...DEFAULT_IGNORE_PATTERNS, ...DEFAULT_IGNORE_DIRS, ...config.ignorePaths];
+  // Two-layer filtering:
+  // 1. Git-level: exclude defaults + user patterns from `git diff` for speed (avoids reading large lock files)
+  // 2. processDiff: re-checks only user-custom patterns for any files that slipped through
+  const gitExcludes = [
+    ...DEFAULT_IGNORE_PATTERNS,
+    ...DEFAULT_IGNORE_DIRS,
+    ...config.ignorePaths,
+  ];
   const rawDiff = await getStagedDiff(gitExcludes);
   const processed = processDiff(rawDiff, stagedFiles, config.ignorePaths);
   const formattedDiff = formatDiffForPrompt(processed);
@@ -89,7 +95,10 @@ export async function runCommit(options: {
   const branchName = config.branchPrefix ? await getBranchName() : undefined;
 
   // Build prompts
-  const systemPrompt = buildSystemPrompt({ styleContext });
+  const systemPrompt = buildSystemPrompt({
+    styleContext,
+    language: config.language,
+  });
   const userPrompt = buildUserPrompt({
     diff: formattedDiff,
     styleContext,

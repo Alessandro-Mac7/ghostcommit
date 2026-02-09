@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { ChangeCategory } from "./changelog/categorizer.js";
 import { ALL_CATEGORIES } from "./changelog/categorizer.js";
@@ -84,9 +84,7 @@ export async function loadConfig(
   let config = createDefaults();
 
   // Layer 1: Global config (~/.ghostcommit.yml)
-  const globalConfig = await readYamlFile(
-    join(homedir(), ".ghostcommit.yml"),
-  );
+  const globalConfig = await readYamlFile(join(homedir(), ".ghostcommit.yml"));
   if (globalConfig) {
     config = mergeConfig(config, globalConfig);
   }
@@ -162,7 +160,10 @@ function mergeConfig(
     branchPrefix: overrides.branchPrefix ?? base.branchPrefix,
     branchPattern: overrides.branchPattern ?? base.branchPattern,
     changelog: overrides.changelog
-      ? mergeChangelog(base.changelog, overrides.changelog as Partial<ChangelogConfig>)
+      ? mergeChangelog(
+          base.changelog,
+          overrides.changelog as Partial<ChangelogConfig>,
+        )
       : { ...base.changelog, exclude: [...base.changelog.exclude] },
     release: overrides.release
       ? mergeRelease(base.release, overrides.release as Partial<ReleaseConfig>)

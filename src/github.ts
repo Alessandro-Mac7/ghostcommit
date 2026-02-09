@@ -52,9 +52,7 @@ export async function getRepoInfo(): Promise<{ owner: string; repo: string }> {
   );
 }
 
-export async function createRelease(
-  options: ReleaseOptions,
-): Promise<string> {
+export async function createRelease(options: ReleaseOptions): Promise<string> {
   const octokit = getOctokit();
 
   const response = await octokit.repos.createRelease({

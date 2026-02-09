@@ -80,7 +80,7 @@ $ ghostcommit --context "added JWT refresh rotation"
 # Commit messages
 ghostcommit                                       # Interactive (auto-detects provider)
 ghostcommit --context "migrated auth to OAuth2"   # Extra context for the AI
-ghostcommit --provider groq                       # Use specific provider
+ghostcommit --provider groq                       # Use specific provider (groq, ollama, gemini, openai, anthropic)
 ghostcommit --model gpt-4o                        # Override model
 ghostcommit --yes                                 # Auto-accept (great for scripts/CI)
 ghostcommit --dry-run                             # Preview without committing

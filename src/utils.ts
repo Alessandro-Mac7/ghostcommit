@@ -39,12 +39,6 @@ export function truncateLines(text: string, maxLines: number): string {
   );
 }
 
-export function isColorSupported(): boolean {
-  if (process.env.NO_COLOR) return false;
-  if (process.env.FORCE_COLOR) return true;
-  return process.stdout.isTTY === true;
-}
-
 export function extractTicketFromBranch(
   branchName: string,
   pattern?: string,
